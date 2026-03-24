@@ -1,137 +1,122 @@
-# RetinaFace
+# 👤 Hybrid Face Recognition Pipeline
 
-RetinaFace is a deep learning based cutting-edge facial detector for Python coming with facial landmarks. Its detection performance is amazing even in the crowd as shown in the following illustration.
+A high-performance, lightweight hybrid face recognition system. This pipeline integrates **RetinaFace** for robust detection, **FaceNet** for deep feature extraction, and **Pinecone** for scalable vector similarity search.
 
-RetinaFace is the face detection module of [insightface](https://github.com/deepinsight/insightface) project. The original implementation is mainly based on mxnet. Then, its tensorflow based [re-implementation](https://github.com/StanislasBertrand/RetinaFace-tf2) is published by [Stanislas Bertrand](https://github.com/StanislasBertrand). So, this repo is heavily inspired from the study of Stanislas Bertrand. Its source code is simplified and it is transformed to pip compatible but the main structure of the reference model and its pre-trained weights are same.
+Powered by a **FastAPI** backend and a responsive **Single-Page Application (SPA)** frontend with real-time progress streaming via Server-Sent Events (SSE).
 
-## Installation [![PyPI](https://img.shields.io/pypi/v/retina-face.svg)](https://pypi.org/project/retina-face/) [![Conda](https://img.shields.io/conda/vn/conda-forge/retina-face.svg)](https://anaconda.org/conda-forge/retina-face)
+---
 
-The easiest way to install retinaface is to download it from [PyPI](https://pypi.org/project/retina-face/). It's going to install the library itself and its prerequisites as well.
+## 🏗️ System Architecture
+`Video/Image Source` → `RetinaFace (Detection)` → `FaceNet (Embeddings)` → `Pinecone (Vector DB)` → `FastAPI (API/UI)`
 
-```shell
-$ pip install retina-face
+### Key Features
+* **Hybrid Detection:** Combines state-of-the-art RetinaFace detection with high-speed embedding generation.
+* **Vector Database Integration:** Utilizes Pinecone for sub-second similarity searches across millions of faces.
+* **Namespace Isolation:** Automatically organizes data by video filename/ID for efficient multi-video searching.
+* **Real-time Feedback:** Background processing with **Server-Sent Events (SSE)** for live logs in the Web UI.
+* **Developer Friendly:** Dual-entry points via a robust **CLI** or a modern **Web Interface**.
+
+---
+
+## 📂 Repository Layout
+* `main.py`: CLI entrypoint for batch processing and quick experiments.
+* `run.py`: One-click launcher for the FastAPI server and UI.
+* `server.py`: FastAPI backend exposing RESTful endpoints and background job management.
+* `store_modes.py` / `search_modes.py`: Core logic for indexing and querying.
+* `models.py`: Singleton initialization for FaceNet and Pinecone client.
+* `utils.py`: Logic for frame-skipping, batching, and face quality filtering.
+* `config.py`: Central configuration for hardware and detection thresholds.
+* `frontend/`: Single-page app components (`index.html`, `app.js`, `style.css`).
+
+---
+
+## 🚀 Getting Started
+
+### 1. Prerequisites
+* **Python 3.9+**
+* **CUDA-enabled GPU** (Optional, but highly recommended for indexing speed).
+
+### 2. Installation
+```bash
+# Clone the repository
+git clone https://github.com/your-username/hybrid-face-recognition.git
+cd hybrid-face-recognition
+
+# Setup environment
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
 ```
 
-RetinaFace is also available at [`Conda`](https://anaconda.org/conda-forge/retina-face). You can alternatively install the package via conda.
+---
 
-```shell
-$ conda install -c conda-forge retina-face
+### Quickstart — CLI
+
+Store faces from a video (creates a namespace derived from the filename):
+
+```bash
+python main.py --mode store --video path/to/video.mp4
 ```
 
-Then, you will be able to import the library and use its functionalities.
+Search for a person in the stored namespace using a reference image:
 
-```python
-from retinaface import RetinaFace
+```bash
+python main.py --mode search --image path/to/person.jpg
 ```
 
-**Face Detection** - [`Demo`](https://youtu.be/Wm1DucuQk70)
+Bulk store multiple videos:
 
-RetinaFace offers a face detection function. It expects an exact path of an image as input.
-
-```python
-resp = RetinaFace.detect_faces("img1.jpg")
+```bash
+python main.py --mode bulk_store --video vid1.mp4 vid2.mp4
 ```
 
-Then, it will return the facial area coordinates and some landmarks (eyes, nose and mouth) with a confidence score.
+Batch search (many people, one namespace):
 
-```json
-{
-    "face_1": {
-        "score": 0.9993440508842468,
-        "facial_area": [155, 81, 434, 443],
-        "landmarks": {
-          "right_eye": [257.82974, 209.64787],
-          "left_eye": [374.93427, 251.78687],
-          "nose": [303.4773, 299.91144],
-          "mouth_right": [228.37329, 338.73193],
-          "mouth_left": [320.21982, 374.58798]
-        }
-  }
-}
+```bash
+python main.py --mode batch_search --image a.jpg b.jpg c.jpg
 ```
 
-**Alignment** - [`Tutorial`](https://sefiks.com/2020/02/23/face-alignment-for-face-recognition-in-python-within-opencv/), [`Demo`](https://youtu.be/WA9i68g4meI)
+---
 
-A modern face recognition [pipeline](https://sefiks.com/2020/05/01/a-gentle-introduction-to-face-recognition-in-deep-learning/) consists of 4 common stages: detect, [align](https://sefiks.com/2020/02/23/face-alignment-for-face-recognition-in-python-within-opencv/), [normalize](https://sefiks.com/2020/11/20/facial-landmarks-for-face-recognition-with-dlib/), [represent](https://sefiks.com/2020/12/14/deep-face-recognition-with-arcface-in-keras-and-python/) and [verify](https://sefiks.com/2020/05/22/fine-tuning-the-threshold-in-face-recognition/). Experiments show that alignment increases the face recognition accuracy almost 1%. Here, retinaface can find the facial landmarks including eye coordinates. In this way, it can apply alignment to detected faces with its extracting faces function.
+### Quickstart — Web UI
 
-```python
-import matplotlib.pyplot as plt
-faces = RetinaFace.extract_faces(img_path = "img.jpg", align = True)
-for face in faces:
-  plt.imshow(face)
-  plt.show()
+Start server and open the frontend automatically:
+
+```bash
+python run.py         # opens http://localhost:8000 by default
 ```
 
-<p align="center"><img src="https://raw.githubusercontent.com/serengil/retinaface/master/tests/outputs/alignment-procedure.png" width="80%" height="80%"></p>
+Or run with uvicorn directly (dev reload):
 
-If you prefer to prioritize alignment before detection, you may opt to set the `align_first` parameter to True. By following this approach, you will eliminate the black pixel areas that arise as a result of alignment following detection. This functionality is applicable only when the provided image contains a single face.
-
-**Face Recognition** - [`Demo`](https://youtu.be/WnUVYQP4h44)
-
-Notice that face recognition module of insightface project is [ArcFace](https://sefiks.com/2020/12/14/deep-face-recognition-with-arcface-in-keras-and-python/), and face detection module is RetinaFace. ArcFace and RetinaFace pair is wrapped in [deepface](https://github.com/serengil/deepface) library for Python. Consider to use deepface if you need an end-to-end face recognition pipeline.
-
-```python
-#!pip install deepface
-from deepface import DeepFace
-obj = DeepFace.verify("img1.jpg", "img2.jpg"
-          , model_name = 'ArcFace', detector_backend = 'retinaface')
-print(obj["verified"])
+```bash
+uvicorn server:app --reload --port 8000
 ```
 
-<p align="center"><img src="https://raw.githubusercontent.com/serengil/retinaface/master/tests/outputs/retinaface-arcface.png" width="100%" height="100%"></p>
+---
 
-Notice that ArcFace got 99.40% accuracy on [LFW data set](https://sefiks.com/2020/08/27/labeled-faces-in-the-wild-for-face-recognition/) whereas human beings just have 97.53% confidence.
+## 🧭 API Overview
+* `POST /api/store` — upload a video to index faces (background job with SSE).
+* `POST /api/search` — upload image and run instant search against a namespace.
+* `POST /api/batch-search` — upload multiple images to search in a namespace.
+* `GET /api/status` — returns device, namespaces and total vectors.
 
-## Contribution [![Tests](https://github.com/serengil/retinaface/actions/workflows/tests.yml/badge.svg)](https://github.com/serengil/retinaface/actions/workflows/tests.yml)
+---
 
-Pull requests are more than welcome! You should run the unit tests and linting locally before creating a PR. Commands `make test` and `make lint` will help you to run it locally. Once a PR created, GitHub test workflow will be run automatically and unit test results will be available in [GitHub actions](https://github.com/serengil/retinaface/actions) before approval.
+## ⚙️ Configuration & Environment
+* Environment variables
+  - `PINECONE_API_KEY` : API key for Pinecone (if using Pinecone).
+  - `PINECONE_INDEXNAME` : Target Pinecone index name.
 
-## Support
+* Configuration
+  - Tweak defaults in [config.py](config.py#L1). Common settings: `BASE_FRAME_SKIP`, `MIN_FACE_SIZE`, `MAX_FACES_TO_COLLECT`, `GPU_BATCH_SIZE`, `DIST_THRESHOLD`.
 
-There are many ways to support a project. Starring⭐️ the repo is just one 🙏
+---
 
-You can also support this work on [Patreon](https://www.patreon.com/serengil?repo=retinaface)
+## 🛠️ Notes & Troubleshooting
+* Ensure `PINECONE_API_KEY` and `PINECONE_INDEXNAME` are set when using Pinecone.
+* If TensorFlow or PyTorch on Windows misreport `__version__`, the code includes shims to mitigate that.
+* For faster indexing reduce `BASE_FRAME_SKIP` (process fewer frames) or increase `GPU_BATCH_SIZE` when GPU memory allows.
 
-<a href="https://www.patreon.com/serengil?repo=retinaface">
-<img src="https://raw.githubusercontent.com/serengil/retinaface/master/icons/patreon.png" width="30%" height="30%">
-</a>
-
-## Acknowledgements
-
-This work is mainly based on the [insightface](https://github.com/deepinsight/insightface) project and [retinaface](https://arxiv.org/pdf/1905.00641.pdf) paper; and it is heavily inspired from the re-implementation of [retinaface-tf2](https://github.com/StanislasBertrand/RetinaFace-tf2) by [Stanislas Bertrand](https://github.com/StanislasBertrand). Finally, Bertrand's [implementation](https://github.com/StanislasBertrand/RetinaFace-tf2/blob/master/rcnn/cython/cpu_nms.pyx) uses [Fast R-CNN](https://arxiv.org/abs/1504.08083) written by [Ross Girshick](https://github.com/rbgirshick/fast-rcnn) in the background. All of those reference studies are licensed under MIT license.
-
-## Citation
-
-If you are using RetinaFace in your research, please consider to cite its [original research paper](https://arxiv.org/abs/1905.00641). Besides, if you are using this re-implementation of retinaface, please consider to cite the following research papers as well. Here are examples of BibTeX entries:
-
-```BibTeX
-@inproceedings{serengil2020lightface,
-  title        = {LightFace: A Hybrid Deep Face Recognition Framework},
-  author       = {Serengil, Sefik Ilkin and Ozpinar, Alper},
-  booktitle    = {2020 Innovations in Intelligent Systems and Applications Conference (ASYU)},
-  pages        = {23-27},
-  year         = {2020},
-  doi          = {10.1109/ASYU50717.2020.9259802},
-  url          = {https://doi.org/10.1109/ASYU50717.2020.9259802},
-  organization = {IEEE}
-}
-```
-
-```BibTeX
-@inproceedings{serengil2021lightface,
-  title        = {HyperExtended LightFace: A Facial Attribute Analysis Framework},
-  author       = {Serengil, Sefik Ilkin and Ozpinar, Alper},
-  booktitle    = {2021 International Conference on Engineering and Emerging Technologies (ICEET)},
-  pages        = {1-4},
-  year         = {2021},
-  doi          = {10.1109/ICEET53442.2021.9659697},
-  url          = {https://doi.org/10.1109/ICEET53442.2021.9659697},
-  organization = {IEEE}
-}
-```
-
-Finally, if you use this RetinaFace re-implementation in your GitHub projects, please add `retina-face` dependency in the requirements.txt.
-
-## Licence
-
-This project is licensed under the MIT License - see [`LICENSE`](https://github.com/serengil/retinaface/blob/master/LICENSE) for more details.
+---
